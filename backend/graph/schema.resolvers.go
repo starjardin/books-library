@@ -21,6 +21,18 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	return todo, nil
 }
 
+// UpdateTodo is the resolver for the updateTodo field.
+func (r *mutationResolver) UpdateTodo(ctx context.Context, id string, input model.NewTodo) (*model.Todo, error) {
+	for _, todo := range r.todos {
+		if todo.ID == id {
+			todo.Text = input.Text
+			todo.User = &model.User{ID: input.UserID, Name: "user " + input.UserID}
+			return todo, nil
+		}
+	}
+	return nil, fmt.Errorf("todo with ID %s not found", id)
+}
+
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 	panic(fmt.Errorf("not implemented: Todos - todos"))
