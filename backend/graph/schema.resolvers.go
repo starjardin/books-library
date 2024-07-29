@@ -9,6 +9,8 @@ import (
 	"books-library/graph/model"
 	"context"
 	"fmt"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // CreateTodo is the resolver for the createTodo field.
@@ -33,8 +35,6 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	}()
 
 	collection := client.Database("todos").Collection("books-library")
-
-	fmt.Println("Collections goes here", collection)
 
 	// Insert the todo
 	_, err = collection.InsertOne(context.Background(), todo)
@@ -62,7 +62,40 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, id string, input mode
 
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+	client, err := database.ConnectToMongoDB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database("todos").Collection("books-library")
+
+	// Find all documents in the collection
+	cursor, err := collection.Find(ctx, bson.D{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var todos []*model.Todo
+	// Iterate through the cursor and decode each document into a Todo object
+	for cursor.Next(ctx) {
+		var todo model.Todo
+		if err := cursor.Decode(&todo); err != nil {
+			return nil, err
+		}
+		todos = append(todos, &todo)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return todos, nil
 }
 
 // Mutation returns MutationResolver implementation.
