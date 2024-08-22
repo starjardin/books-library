@@ -13,6 +13,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const booksCollection = "books-library"
+const failureToConnectMessage = "failed to connect to MongoDB: %w"
+
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
 	todo := &model.Todo{
@@ -25,7 +28,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	client, err := database.ConnectToMongoDB()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+		return nil, fmt.Errorf(failureToConnectMessage, err)
 	}
 
 	defer func() {
@@ -34,9 +37,8 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 		}
 	}()
 
-	collection := client.Database("todos").Collection("books-library")
+	collection := client.Database("todos").Collection(booksCollection)
 
-	// Insert the todo
 	_, err = collection.InsertOne(context.Background(), todo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert todo: %w", err)
@@ -49,15 +51,43 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 
 // UpdateTodo is the resolver for the updateTodo field.
 func (r *mutationResolver) UpdateTodo(ctx context.Context, id string, input model.NewTodo) (*model.Todo, error) {
-	for _, todo := range r.todos {
-		if todo.ID == id {
-			todo.Text = input.Text
-			todo.User = &model.User{ID: input.UserID, Name: "user " + input.UserID}
-			return todo, nil
-		}
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf(failureToConnectMessage, err)
 	}
 
-	return nil, fmt.Errorf("todo with ID %s not found", id)
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database("todos").Collection(booksCollection)
+
+	filter := bson.M{"id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"text":   input.Text,
+			"userId": input.UserID,
+		},
+	}
+
+	result, _ := collection.UpdateOne(ctx, filter, update)
+
+	if result.MatchedCount == 0 {
+		return nil, fmt.Errorf("todo with ID %s not found", id)
+	}
+
+	var updatedTodo model.Todo
+	err = collection.FindOne(ctx, filter).Decode(&updatedTodo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch updated todo: %w", err)
+	}
+
+	fmt.Println("Updated a todo in the collection")
+
+	return &updatedTodo, nil
 }
 
 // Todos is the resolver for the todos field.
