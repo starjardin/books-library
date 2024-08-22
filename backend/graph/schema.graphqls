@@ -12,6 +12,19 @@ type Todo {
 type User {
   id: ID!
   name: String!
+  email: String!
+  firstName: String!
+  lastName: String!
+}
+
+type Books {
+  bookId: ID!
+  title: String!
+  author: String!
+  checkIn: Date!
+  checkOut: Date!
+  user: User!
+  available: Boolean!
 }
 
 type Query {
