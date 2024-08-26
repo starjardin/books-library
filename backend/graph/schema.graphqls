@@ -11,24 +11,29 @@ type Todo {
 
 type User {
   id: ID!
-  name: String!
   email: String!
   firstName: String!
   lastName: String!
 }
 
-type Books {
-  bookId: ID!
+type Book {
+  id: ID!
   title: String!
   author: String!
-  checkIn: Date!
-  checkOut: Date!
-  user: User!
-  available: Boolean!
+  isbn: Int!
+  availableCopies: Int!
+  isBorrowed: Boolean!
+  borrowedBy: User
+  borrowedAt: String
+  createdA: String!
+  returnedAt: String
+  dueDate: String
 }
 
 type Query {
   todos: [Todo!]!
+  books: [Book!]!
+  users: [User!]!
 }
 
 input NewTodo {
@@ -36,7 +41,17 @@ input NewTodo {
   userId: String!
 }
 
+input NewBook {
+  title: String!
+  author: String!
+  isbn: Int!
+  availableCopies: Int!
+}
+
 type Mutation {
   createTodo(input: NewTodo!): Todo!
   updateTodo(id: String!, input: NewTodo!): Todo!
+  addBook(input: NewBook!): Book!
+  borrowBook(bookID: ID!, userID: ID!): Book!
+  returnBook(bookID: ID!): Book!
 }

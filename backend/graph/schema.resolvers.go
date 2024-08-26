@@ -13,12 +13,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const onjaLibrary = "onja-library"
+
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
 	todo := &model.Todo{
 		Text: input.Text,
 		ID:   "3",
-		User: &model.User{ID: input.UserID, Name: "user " + input.UserID},
+		User: &model.User{ID: input.UserID, FirstName: "user " + input.UserID},
 	}
 	r.todos = append(r.todos, todo)
 
@@ -52,12 +54,62 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, id string, input mode
 	for _, todo := range r.todos {
 		if todo.ID == id {
 			todo.Text = input.Text
-			todo.User = &model.User{ID: input.UserID, Name: "user " + input.UserID}
+			todo.User = &model.User{ID: input.UserID, FirstName: "user " + input.UserID}
 			return todo, nil
 		}
 	}
 
 	return nil, fmt.Errorf("todo with ID %s not found", id)
+}
+
+// AddBook is the resolver for the addBook field.
+func (r *mutationResolver) AddBook(ctx context.Context, input model.NewBook) (*model.Book, error) {
+	book := &model.Book{
+		Title:           input.Title,
+		Author:          input.Author,
+		Isbn:            input.Isbn,
+		AvailableCopies: input.AvailableCopies,
+		IsBorrowed:      false,
+		CreatedA:        "2021-09-01",
+		BorrowedAt:      nil,
+		ReturnedAt:      nil,
+		DueDate:         nil,
+		BorrowedBy:      nil,
+	}
+
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database(onjaLibrary).Collection("books")
+
+	// Insert the book
+	_, err = collection.InsertOne(context.Background(), book)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert book: %w", err)
+	}
+
+	fmt.Println("Inserted a book into the collection")
+
+	return book, nil
+}
+
+// BorrowBook is the resolver for the borrowBook field.
+func (r *mutationResolver) BorrowBook(ctx context.Context, bookID string, userID string) (*model.Book, error) {
+	panic(fmt.Errorf("not implemented: BorrowBook - borrowBook"))
+}
+
+// ReturnBook is the resolver for the returnBook field.
+func (r *mutationResolver) ReturnBook(ctx context.Context, bookID string) (*model.Book, error) {
+	panic(fmt.Errorf("not implemented: ReturnBook - returnBook"))
 }
 
 // Todos is the resolver for the todos field.
@@ -96,6 +148,88 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 	}
 
 	return todos, nil
+}
+
+// Books is the resolver for the books field.
+func (r *queryResolver) Books(ctx context.Context) ([]*model.Book, error) {
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database(onjaLibrary).Collection("books")
+
+	cursor, err := collection.Find(ctx, bson.D{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	var books []*model.Book
+
+	for cursor.Next(ctx) {
+		var book model.Book
+		if err := cursor.Decode(&book); err != nil {
+			return nil, err
+		}
+		books = append(books, &book)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return books, nil
+}
+
+// Users is the resolver for the users field.
+func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database(onjaLibrary).Collection("users")
+
+	cursor, err := collection.Find(ctx, bson.D{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	var users []*model.User
+
+	for cursor.Next(ctx) {
+		var user model.User
+		if err := cursor.Decode(&user); err != nil {
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 // Mutation returns MutationResolver implementation.
