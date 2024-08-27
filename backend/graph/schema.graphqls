@@ -52,6 +52,6 @@ type Mutation {
   createTodo(input: NewTodo!): Todo!
   updateTodo(id: String!, input: NewTodo!): Todo!
   addBook(input: NewBook!): Book!
-  borrowBook(bookID: ID!, userID: ID!): Book!
-  returnBook(bookID: ID!): Book!
+  borrowBook(isbn: Int!, userID: ID!): Book!
+  returnBook(isbn: Int!): Book!
 }

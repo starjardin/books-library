@@ -63,9 +63,9 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddBook    func(childComplexity int, input model.NewBook) int
-		BorrowBook func(childComplexity int, bookID string, userID string) int
+		BorrowBook func(childComplexity int, isbn int, userID string) int
 		CreateTodo func(childComplexity int, input model.NewTodo) int
-		ReturnBook func(childComplexity int, bookID string) int
+		ReturnBook func(childComplexity int, isbn int) int
 		UpdateTodo func(childComplexity int, id string, input model.NewTodo) int
 	}
 
@@ -94,8 +94,8 @@ type MutationResolver interface {
 	CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error)
 	UpdateTodo(ctx context.Context, id string, input model.NewTodo) (*model.Todo, error)
 	AddBook(ctx context.Context, input model.NewBook) (*model.Book, error)
-	BorrowBook(ctx context.Context, bookID string, userID string) (*model.Book, error)
-	ReturnBook(ctx context.Context, bookID string) (*model.Book, error)
+	BorrowBook(ctx context.Context, isbn int, userID string) (*model.Book, error)
+	ReturnBook(ctx context.Context, isbn int) (*model.Book, error)
 }
 type QueryResolver interface {
 	Todos(ctx context.Context) ([]*model.Todo, error)
@@ -221,7 +221,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.BorrowBook(childComplexity, args["bookID"].(string), args["userID"].(string)), true
+		return e.complexity.Mutation.BorrowBook(childComplexity, args["isbn"].(int), args["userID"].(string)), true
 
 	case "Mutation.createTodo":
 		if e.complexity.Mutation.CreateTodo == nil {
@@ -245,7 +245,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ReturnBook(childComplexity, args["bookID"].(string)), true
+		return e.complexity.Mutation.ReturnBook(childComplexity, args["isbn"].(int)), true
 
 	case "Mutation.updateTodo":
 		if e.complexity.Mutation.UpdateTodo == nil {
@@ -480,15 +480,15 @@ func (ec *executionContext) field_Mutation_addBook_args(ctx context.Context, raw
 func (ec *executionContext) field_Mutation_borrowBook_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["bookID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bookID"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+	var arg0 int
+	if tmp, ok := rawArgs["isbn"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isbn"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["bookID"] = arg0
+	args["isbn"] = arg0
 	var arg1 string
 	if tmp, ok := rawArgs["userID"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
@@ -519,15 +519,15 @@ func (ec *executionContext) field_Mutation_createTodo_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_returnBook_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["bookID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bookID"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+	var arg0 int
+	if tmp, ok := rawArgs["isbn"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isbn"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["bookID"] = arg0
+	args["isbn"] = arg0
 	return args, nil
 }
 
@@ -1313,7 +1313,7 @@ func (ec *executionContext) _Mutation_borrowBook(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().BorrowBook(rctx, fc.Args["bookID"].(string), fc.Args["userID"].(string))
+		return ec.resolvers.Mutation().BorrowBook(rctx, fc.Args["isbn"].(int), fc.Args["userID"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1392,7 +1392,7 @@ func (ec *executionContext) _Mutation_returnBook(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ReturnBook(rctx, fc.Args["bookID"].(string))
+		return ec.resolvers.Mutation().ReturnBook(rctx, fc.Args["isbn"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

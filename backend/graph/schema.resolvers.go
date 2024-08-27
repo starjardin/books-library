@@ -9,11 +9,11 @@ import (
 	"books-library/graph/model"
 	"context"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-const onjaLibrary = "onja-library"
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
@@ -70,7 +70,7 @@ func (r *mutationResolver) AddBook(ctx context.Context, input model.NewBook) (*m
 		Isbn:            input.Isbn,
 		AvailableCopies: input.AvailableCopies,
 		IsBorrowed:      false,
-		CreatedA:        "2021-09-01",
+		CreatedA:        time.Now().Format("2006-01-02 15:04:05"),
 		BorrowedAt:      nil,
 		ReturnedAt:      nil,
 		DueDate:         nil,
@@ -103,12 +103,61 @@ func (r *mutationResolver) AddBook(ctx context.Context, input model.NewBook) (*m
 }
 
 // BorrowBook is the resolver for the borrowBook field.
-func (r *mutationResolver) BorrowBook(ctx context.Context, bookID string, userID string) (*model.Book, error) {
-	panic(fmt.Errorf("not implemented: BorrowBook - borrowBook"))
+func (r *mutationResolver) BorrowBook(ctx context.Context, isbn int, userID string) (*model.Book, error) {
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid userID: %v", err)
+	}
+
+	// Find the user by userID
+	var user model.User
+	err = client.Database(onjaLibrary).Collection("users").FindOne(ctx, bson.M{"_id": userObjectID}).Decode(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user: %v", err)
+	}
+
+	collection := client.Database("onja-library").Collection("books")
+
+	filter := bson.M{"isbn": isbn}
+
+	update := bson.M{
+		"$set": bson.M{
+			"isBorrowed": true,
+			"borrowedAt": time.Now().Format("2006-01-02 15:04:05"),
+			"dueDate":    time.Now().AddDate(0, 0, 7).Format("2006-01-02 15:04:05"),
+			"borrowedBy": user,
+		},
+	}
+
+	result := collection.FindOneAndUpdate(ctx, filter, update)
+	if result.Err() != nil {
+		return nil, fmt.Errorf("failed to borrow book: %w", result.Err())
+	}
+
+	var updatedBook model.Book
+	err = result.Decode(&updatedBook)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode updated book: %w", err)
+	}
+
+	return &updatedBook, nil
 }
 
 // ReturnBook is the resolver for the returnBook field.
-func (r *mutationResolver) ReturnBook(ctx context.Context, bookID string) (*model.Book, error) {
+func (r *mutationResolver) ReturnBook(ctx context.Context, isbn int) (*model.Book, error) {
 	panic(fmt.Errorf("not implemented: ReturnBook - returnBook"))
 }
 
@@ -240,3 +289,11 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+const onjaLibrary = "onja-library"
