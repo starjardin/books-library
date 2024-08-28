@@ -1,10 +1,13 @@
-import './App.css'
+import BooksTable from "./components/BooksTable";
+import { Header } from "./components/Header";
 
-function App() {
-
+const App = () => {
   return (
-    <h2>Hello world</h2>
-  )
-}
+    <>
+      <Header />
+      <BooksTable books={[]} />
+    </>
+  );
+};
 
-export default App
+export default App;
