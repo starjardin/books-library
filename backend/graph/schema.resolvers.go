@@ -9,8 +9,10 @@ import (
 	"books-library/graph/model"
 	"context"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // CreateTodo is the resolver for the createTodo field.
@@ -18,7 +20,7 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	todo := &model.Todo{
 		Text: input.Text,
 		ID:   "3",
-		User: &model.User{ID: input.UserID, Name: "user " + input.UserID},
+		User: &model.User{ID: input.UserID, FirstName: "user " + input.UserID},
 	}
 	r.todos = append(r.todos, todo)
 
@@ -52,12 +54,111 @@ func (r *mutationResolver) UpdateTodo(ctx context.Context, id string, input mode
 	for _, todo := range r.todos {
 		if todo.ID == id {
 			todo.Text = input.Text
-			todo.User = &model.User{ID: input.UserID, Name: "user " + input.UserID}
+			todo.User = &model.User{ID: input.UserID, FirstName: "user " + input.UserID}
 			return todo, nil
 		}
 	}
 
 	return nil, fmt.Errorf("todo with ID %s not found", id)
+}
+
+// AddBook is the resolver for the addBook field.
+func (r *mutationResolver) AddBook(ctx context.Context, input model.NewBook) (*model.Book, error) {
+	book := &model.Book{
+		Title:           input.Title,
+		Author:          input.Author,
+		Isbn:            input.Isbn,
+		AvailableCopies: input.AvailableCopies,
+		IsBorrowed:      false,
+		CreatedA:        time.Now().Format("2006-01-02 15:04:05"),
+		BorrowedAt:      nil,
+		ReturnedAt:      nil,
+		DueDate:         nil,
+		BorrowedBy:      nil,
+	}
+
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database(onjaLibrary).Collection("books")
+
+	// Insert the book
+	_, err = collection.InsertOne(context.Background(), book)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert book: %w", err)
+	}
+
+	fmt.Println("Inserted a book into the collection")
+
+	return book, nil
+}
+
+// BorrowBook is the resolver for the borrowBook field.
+func (r *mutationResolver) BorrowBook(ctx context.Context, isbn int, userID string) (*model.Book, error) {
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid userID: %v", err)
+	}
+
+	// Find the user by userID
+	var user model.User
+	err = client.Database(onjaLibrary).Collection("users").FindOne(ctx, bson.M{"_id": userObjectID}).Decode(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user: %v", err)
+	}
+
+	collection := client.Database("onja-library").Collection("books")
+
+	filter := bson.M{"isbn": isbn}
+
+	update := bson.M{
+		"$set": bson.M{
+			"isBorrowed": true,
+			"borrowedAt": time.Now().Format("2006-01-02 15:04:05"),
+			"dueDate":    time.Now().AddDate(0, 0, 7).Format("2006-01-02 15:04:05"),
+			"borrowedBy": user,
+		},
+	}
+
+	result := collection.FindOneAndUpdate(ctx, filter, update)
+	if result.Err() != nil {
+		return nil, fmt.Errorf("failed to borrow book: %w", result.Err())
+	}
+
+	var updatedBook model.Book
+	err = result.Decode(&updatedBook)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode updated book: %w", err)
+	}
+
+	return &updatedBook, nil
+}
+
+// ReturnBook is the resolver for the returnBook field.
+func (r *mutationResolver) ReturnBook(ctx context.Context, isbn int) (*model.Book, error) {
+	panic(fmt.Errorf("not implemented: ReturnBook - returnBook"))
 }
 
 // Todos is the resolver for the todos field.
@@ -98,6 +199,88 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 	return todos, nil
 }
 
+// Books is the resolver for the books field.
+func (r *queryResolver) Books(ctx context.Context) ([]*model.Book, error) {
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database(onjaLibrary).Collection("books")
+
+	cursor, err := collection.Find(ctx, bson.D{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	var books []*model.Book
+
+	for cursor.Next(ctx) {
+		var book model.Book
+		if err := cursor.Decode(&book); err != nil {
+			return nil, err
+		}
+		books = append(books, &book)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return books, nil
+}
+
+// Users is the resolver for the users field.
+func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
+	client, err := database.ConnectToMongoDB()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	defer func() {
+		if err := client.Disconnect(ctx); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	collection := client.Database(onjaLibrary).Collection("users")
+
+	cursor, err := collection.Find(ctx, bson.D{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	var users []*model.User
+
+	for cursor.Next(ctx) {
+		var user model.User
+		if err := cursor.Decode(&user); err != nil {
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
@@ -106,3 +289,11 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+const onjaLibrary = "onja-library"

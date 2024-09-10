@@ -2,7 +2,28 @@
 
 package model
 
+type Book struct {
+	ID              string  `json:"id"`
+	Title           string  `json:"title"`
+	Author          string  `json:"author"`
+	Isbn            int     `json:"isbn"`
+	AvailableCopies int     `json:"availableCopies"`
+	IsBorrowed      bool    `json:"isBorrowed"`
+	BorrowedBy      *User   `json:"borrowedBy,omitempty"`
+	BorrowedAt      *string `json:"borrowedAt,omitempty"`
+	CreatedA        string  `json:"createdA"`
+	ReturnedAt      *string `json:"returnedAt,omitempty"`
+	DueDate         *string `json:"dueDate,omitempty"`
+}
+
 type Mutation struct {
+}
+
+type NewBook struct {
+	Title           string `json:"title"`
+	Author          string `json:"author"`
+	Isbn            int    `json:"isbn"`
+	AvailableCopies int    `json:"availableCopies"`
 }
 
 type NewTodo struct {
@@ -21,6 +42,8 @@ type Todo struct {
 }
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
 }
