@@ -14,7 +14,7 @@ export const Header: React.FC = () => {
             <a href="/about">About</a>
           </li>
           <li>
-            <a href="/contact">Contact</a>
+            <a href="/contacts">Contact</a>
           </li>
         </u>
       </nav>

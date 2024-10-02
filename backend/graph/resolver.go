@@ -4,8 +4,13 @@ package graph
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
 
-import "books-library/graph/model"
+import (
+	"books-library/graph/model"
+
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Resolver struct {
-	todos []*model.Todo
+	todos          []*model.Todo
+	UserCollection *mongo.Collection
 }
