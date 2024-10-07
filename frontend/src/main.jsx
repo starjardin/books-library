@@ -7,6 +7,9 @@ import "./index.css";
 import { ApolloClient, InMemoryCache, ApolloProvider } from "@apollo/client";
 import Signup from "./components/Signup";
 import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import LoginError from "./components/LoginError";
+import SignupError from "./components/SignupError";
 
 const client = new ApolloClient({
   uri: "http://localhost:8080/query",
@@ -34,6 +37,18 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/dashboard",
+    element: <Dashboard />,
+  },
+  {
+    path: "/login/error",
+    element: <LoginError />,
+  },
+  {
+    path: "/singup/error",
+    element: <SignupError />,
   },
 ]);
 
