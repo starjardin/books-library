@@ -2,8 +2,10 @@
 #
 # https://gqlgen.com/getting-started/
 
+scalar ObjectID
+
 type Todo {
-  id: ID!
+  id: ObjectID!
   text: String!
   done: Boolean!
   user: User!
@@ -12,8 +14,9 @@ type Todo {
 type User {
   id: ID!
   email: String!
-  firstName: String!
-  lastName: String!
+  username: String!
+  token: String!
+  password: String!
 }
 
 type Book {
@@ -34,6 +37,7 @@ type Query {
   todos: [Todo!]!
   books: [Book!]!
   users: [User!]!
+  me: User
 }
 
 input NewTodo {
@@ -48,10 +52,23 @@ input NewBook {
   availableCopies: Int!
 }
 
+input SignupInput {
+  username: String!
+  email: String!
+  password: String!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
 type Mutation {
   createTodo(input: NewTodo!): Todo!
   updateTodo(id: String!, input: NewTodo!): Todo!
   addBook(input: NewBook!): Book!
   borrowBook(isbn: Int!, userID: ID!): Book!
   returnBook(isbn: Int!): Book!
+  signup(input: SignupInput!): User!
+  login(input: LoginInput!): User!
 }

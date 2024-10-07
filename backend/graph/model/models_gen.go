@@ -16,6 +16,11 @@ type Book struct {
 	DueDate         *string `json:"dueDate,omitempty"`
 }
 
+type LoginInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type Mutation struct {
 }
 
@@ -34,6 +39,12 @@ type NewTodo struct {
 type Query struct {
 }
 
+type SignupInput struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type Todo struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
@@ -42,8 +53,9 @@ type Todo struct {
 }
 
 type User struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Token    string `json:"token"`
+	Password string `json:"password"`
 }
